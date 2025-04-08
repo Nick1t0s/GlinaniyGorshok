@@ -62,7 +62,6 @@ def serial_reader():
         print(f"Ошибка serial порта: {e}")
         stop_threads = True
 
-
 def update_plot(frame):
     # if stop_threads: raise KeyboardInterrupt("Нет порта")
     print("График")
@@ -72,8 +71,6 @@ def update_plot(frame):
     lineU1.set_data(range(len(data_buffer)), [x.get("U1") for x in data_buffer])
     lineU2.set_data(range(len(data_buffer)), [x.get("U2") for x in data_buffer])
 
-    ax.relim()
-    ax.autoscale_view()
 
     # coff.set_name(f"Коэфицент пульсации: {data_buffer[-1].get("rippCoef")}%")
     # I.set_name(f"I: {data_buffer[-1].get("I")}А")
@@ -82,17 +79,21 @@ def update_plot(frame):
     # return line
 
 
-fig, ax = plt.subplots(1, 2)
-lineU1, = ax[0][0].plot([0,1], [0,5])
-lineU2, = ax[0][1].plot([0,1], [1, 2])
+fig, (ax1, ax2) = plt.subplots(2)
 
-coff = ax.text(0.2, 0.2, f"Коэфицент пульсации: {1}%")
 
-I = ax.text(0.0, 5, f"I: {1} A")
-U = ax.text(0.0, 2.5, f"U: {1} В")
-P = ax.text(0.0, 0, f"P: {1} Вт")
+lineU1, = ax1.plot([0,1], [0,5])
 
-ax.set_title('Real-time Serial Data')
+
+
+lineU2, = ax2.plot([0,1], [1, 2])
+
+coff = plt.text(0.2, 0.2, f"Коэфицент пульсации: {1}%")
+
+I = plt.text(0.0, 5, f"I: {1} A")
+U = plt.text(0.0, 2.5, f"U: {1} В")
+P = plt.text(0.0, 0, f"P: {1} Вт")
+
 
 serial_thread = threading.Thread(target=serial_reader)
 serial_thread.start()

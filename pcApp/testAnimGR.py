@@ -1,28 +1,26 @@
-# Importing libraries
-import matplotlib.pyplot as plt
 import numpy as np
-import math
-plt.figure(figsize=(15, 6))
-# Placing the plots in the plane
-plot1 = plt.subplot2grid((2, 5), (0, 1), rowspan=1, colspan=10)
-plot2 = plt.subplot2grid((2, 5), (1, 1), rowspan=1, colspan=10)
-# plot3 = plt.subplot2grid((3, 3), (1, 0), rowspan=2)
+import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 
-# Using Numpy to create an array x
-x = np.arange(1, 100000000)
+fig, (ax, ax2) = plt.subplots(2) #create two axes
+xdata, ydata = [], []
+ln, = ax.plot([], [], 'ro')
+ln2, = ax2.plot([], [], 'go') # added
 
-# Plot for square root
-plot2.plot(x, x**0.5)
-plot2.set_title('Square Root')
+def init():
+    ax.set_xlim(0, 2*np.pi)
+    ax.set_ylim(-1, 1)
+    ax2.set_xlim(0, 2*np.pi) # added
+    ax2.set_ylim(-1, 1) # added
+    return ln,ln2 # added ln2
 
-# Plot for exponent
-plot1.plot(x, x**0.5)
-plot1.set_title('Exponent')
+def update(frame):
+    xdata.append(frame)
+    ydata.append(np.sin(frame))
+    ln.set_data(xdata, ydata)
+    ln2.set_data(xdata, ydata) # added
+    return ln, ln2 #added ln2
 
-# Plot for Square
-# plot3.plot(x, x*x)
-# plot3.set_title('Square')
-
-# Packing all the plots and displaying them
-plt.tight_layout()
+ani = FuncAnimation(fig, update, frames=np.linspace(0, 2*np.pi, 128),
+                    init_func=init, blit=True)
 plt.show()
