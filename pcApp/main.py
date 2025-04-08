@@ -5,11 +5,9 @@ from matplotlib.animation import FuncAnimation
 from collections import deque
 import time
 
-# Настройки serial порта (замените на свои)
 SERIAL_PORT = 'COM3'  # или '/dev/ttyUSB0' для Linux
 BAUD_RATE = 9600
 
-# Глобальные переменные для обмена между потоками
 data_buffer = deque(maxlen=100)  # Ограничиваем размер буфера для эффективности
 lock = threading.Lock()
 stop_threads = False
