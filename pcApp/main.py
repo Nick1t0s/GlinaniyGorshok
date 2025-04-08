@@ -3,83 +3,105 @@ import serial
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from collections import deque
-import time
+import configparser
+import json
 
-SERIAL_PORT = 'COM3'  # или '/dev/ttyUSB0' для Linux
-BAUD_RATE = 9600
+config = configparser.ConfigParser()
+config.read("config.ini")
+SERIAL_PORT = config["Serial"]["port"]
+BAUD_RATE = config["Serial"]["baud"]
 
-data_buffer = deque(maxlen=100)  # Ограничиваем размер буфера для эффективности
-lock = threading.Lock()
+R = config["Scheme"]["R"]
+
+data_buffer = deque(maxlen=15000)
+data_buffer.append({"U1":3, "U2":4, "freq1": 100, "freq": 200, "amp1": 2, "amp2": 3})
 stop_threads = False
 
 
-# Функция для чтения данных с serial порта
 def serial_reader():
     global data_buffer, stop_threads
 
     try:
         ser = serial.Serial(SERIAL_PORT, BAUD_RATE, timeout=1)
-        print(f"Подключено к {SERIAL_PORT} на {BAUD_RATE} бод")
+        print(f"{SERIAL_PORT}/{BAUD_RATE}")
 
         while not stop_threads:
             try:
                 line = ser.readline().decode('utf-8').strip()
                 if line:
                     try:
-                        value = int(line)
-                        print(value)
-                        with lock:
-                            data_buffer.append(value)
-                    except ValueError:
-                        print(f"Неверные данные: {line}")
+                        data = json.loads(line)
+                        # U1 - int
+                        # U2 - int
+                        # freq1 - int
+                        # freq2 - int
+                        # amp1 - int
+                        # amp2 - int
+
+                        mx = max(data, key = lambda x: x.get("U2")).get("U2")
+                        mn = min(data, key = lambda x: x.get("U2")).get("U2")
+                        sm = sum([x.get("U2") for x in data_buffer])
+                        cnt = len(data)
+
+                        mid = sm/cnt
+
+                        data["rippCoef"] = ((mx-mn)/mid)*100
+                        data["I"] = data.get("U2")/R
+                        data["P"] = data.get("U2")*data.get("I")
+                        data_buffer.append(data)
+
+
+                    except Exception as e:
+                        print(f"Wrong: {line}, \n Eer: e")
             except UnicodeDecodeError:
-                print("Ошибка декодирования данных")
+                print(UnicodeDecodeError)
 
         ser.close()
-        print("Подключение завершено")
+        print("Close")
     except serial.SerialException as e:
         print(f"Ошибка serial порта: {e}")
         stop_threads = True
 
 
-# Функция для обновления графика
 def update_plot(frame):
-    print("График обновлен")
-    with lock:
-        if data_buffer:
-            print(data_buffer)
+    # if stop_threads: raise KeyboardInterrupt("Нет порта")
+    print("График")
 
-            line.set_data(range(len(data_buffer)), data_buffer)
-            ax.relim()
-            ax.autoscale_view()
-    return line
+    print(data_buffer)
+
+    lineU1.set_data(range(len(data_buffer)), [x.get("U1") for x in data_buffer])
+    lineU2.set_data(range(len(data_buffer)), [x.get("U2") for x in data_buffer])
+
+    ax.relim()
+    ax.autoscale_view()
+
+    # coff.set_name(f"Коэфицент пульсации: {data_buffer[-1].get("rippCoef")}%")
+    # I.set_name(f"I: {data_buffer[-1].get("I")}А")
+    # U.set_name(f"U: {data_buffer[-1].get("U2")}В")
+    # P.set_name(f"P: {data_buffer[-1].get("P")}Вт")
+    # return line
 
 
-# Функция для закрытия окна
-def on_close(event):
-    global stop_threads
-    stop_threads = True
+fig, ax = plt.subplots(1, 2)
+lineU1, = ax[0][0].plot([0,1], [0,5])
+lineU2, = ax[0][1].plot([0,1], [1, 2])
 
+coff = ax.text(0.2, 0.2, f"Коэфицент пульсации: {1}%")
 
-# Создаем график
-fig, ax = plt.subplots()
-line, = ax.plot([], [], 'b-')
+I = ax.text(0.0, 5, f"I: {1} A")
+U = ax.text(0.0, 2.5, f"U: {1} В")
+P = ax.text(0.0, 0, f"P: {1} Вт")
+
 ax.set_title('Real-time Serial Data')
-ax.set_xlabel('Time')
-ax.set_ylabel('Value')
-fig.canvas.mpl_connect('close_event', on_close)
 
-# Запускаем поток для чтения serial данных
 serial_thread = threading.Thread(target=serial_reader)
-serial_thread.daemon = True
 serial_thread.start()
 
-# Настраиваем анимацию для обновления графика
-ani = FuncAnimation(fig, update_plot, interval=1, blit=False)
+
+ani = FuncAnimation(fig, update_plot, interval=1)
 
 plt.show()
 
-# После закрытия окна
 stop_threads = True
 serial_thread.join()
 print("Программа завершена")
